@@ -9,7 +9,8 @@
 from PyN64 import cpu
 from PyN64.cpu import CPU
 from PyN64.cpu import Memory
-
+from PyN64.rom import ROM
+from PyN64.instruction import ADD
 
 import sys
 
@@ -25,7 +26,10 @@ def run():
     print("[INFO] Reading addresses")
     for i in range(0x0000, 0x00EF):
         b += bytes([memory.read(i)])
-        
+    print(b)
+    header = ROM.parse(b)
+    print(cpu.program_counter)
+    ADD.execute()
 
 def main():
     args = sys.argv

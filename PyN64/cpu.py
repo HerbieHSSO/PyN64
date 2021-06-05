@@ -22,6 +22,7 @@ class CPU:
         return value
 class Registers:
     def __init__(self):
+        
         self.stack_pointer = 0xa4000040
         self._registers = {
             "ZERO": 0,
@@ -79,6 +80,16 @@ class Registers:
             self._registers[register_name] = self._registers[register_name] & ~(1 << bit)
     def get_bit(self, register_name, bit) -> bool:
         return bool(self._registers[register_name] & (1 << bit))
+
+
+
+
+
+
+
+
+
+
 
 
 
