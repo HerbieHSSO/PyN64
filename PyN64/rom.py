@@ -9,8 +9,8 @@ class ROM:
 
 
 
-    def parse(b: bytes):
-        file = BytesIO(b)
+    def parse(data: bytes):
+        file = BytesIO(data)
         print(file)
 
 

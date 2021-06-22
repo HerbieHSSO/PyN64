@@ -3,7 +3,7 @@
 class Memory:
     def __init__(self):
         self.internal_ram = [0] * 0x2000
-        self._high_internal_ram = [0] * 127
+        #self._high_internal_ram = [0] * 127
 
     def read(self, address):
         return address
@@ -13,12 +13,14 @@ class Memory:
         if value is None:
             raise ValueError(f"Trying to write None to {hex(address)}")
 class CPU:
-    def __init__(self, memory: Memory, program_counter: int):
+    def __init__(self, memory: Memory, program_counter: hex):
         self.registers = Registers()
-        self.memory = memory
+        self.memory = Memory()
+        self.program_counter = program_counter
     def load(self):
         value = self.memory.read(self.program_counter)
         self.program_counter += 1
+        
         return value
 class Registers:
     def __init__(self):
