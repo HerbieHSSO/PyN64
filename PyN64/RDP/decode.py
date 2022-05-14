@@ -1,0 +1,37 @@
+
+
+
+
+
+
+
+
+
+def FetchAndDecodeRDP(instruction):
+
+
+    command = (instruction 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
