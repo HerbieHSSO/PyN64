@@ -1,4 +1,6 @@
 from io import BytesIO
+import numba as nb
+
 
 def analysis(value):
     value = hex(value)
@@ -7,6 +9,9 @@ def analysis(value):
     if len(val) == 1:
         value = f'0x0{val}'
     return str(value).replace('0x', '')
+
+
+
 
 class ROM:
 

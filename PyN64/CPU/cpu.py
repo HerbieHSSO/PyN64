@@ -24,28 +24,11 @@ def padhexa(s):
 
 
 
-
-rom_type = nb.deferred_type()
-rom.define(Registers.class_type.instance_type)
-
-memory_type = nb.deferred_type()
-memory_type.define(Memory.class_type.instance_type)
-
-
-
-
-memory_spec = [
-    ('rom', rom_type),
-    ('memory', memory_type),
-    ('program_counter', int32)
-]
     
 
 
 
-
-
-@nb.experimental.jitclass(memory_spec)  
+ 
 class Memory:
     def __init__(self, rom: ROM, rdp: RDP, rsp: RSP):
         self.rom = rom
@@ -214,7 +197,6 @@ class Memory:
 
 
 
-@nb.experimental.jitclass
 class Registers:
     def __init__(self):
         
@@ -280,30 +262,6 @@ class Registers:
 
 
 
-
-
-
-registers_type = nb.deferred_type()
-registers_type.define(Registers.class_type.instance_type)
-
-memory_type = nb.deferred_type()
-memory_type.define(Memory.class_type.instance_type)
-
-
-
-
-cpu_spec = [
-    ('registers', registers_type),
-    ('memory', memory_type),
-    ('program_counter', int32)
-]
-    
-
-
-
-
-
-@nb.experimental.jitclass(cpu_spec)
 class CPU:
 
     def __init__(self, registers, memory, program_counter: int):

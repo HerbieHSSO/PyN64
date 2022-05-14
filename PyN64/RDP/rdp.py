@@ -8,7 +8,6 @@ from pygame.surface import Surface
 
 
 
-
 class RDP:
     def __init__(self):
         pygame.init()
