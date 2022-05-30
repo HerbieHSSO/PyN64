@@ -21,21 +21,14 @@ from PyN64.RSP.decode import FetchAndDecodeRSP
 import win32api, win32con, win32process
 
 import sys
-from timeit import default_timer as timer
+import keyboard
+import time
 from multiprocessing import Process, Queue
 from datetime import timedelta
 import traceback
 
+import dis
 
-
-
-def analysis(value):
-    value = hex(value)
-
-    val = str(value).replace('0x','')
-    if len(val) == 1:
-        value = f'0x0{val}'
-    return str(value).replace('0x', '')
 
     
 def BOOT(cpu, rom):
@@ -78,10 +71,15 @@ def BOOT(cpu, rom):
 
 
 def debug(q):
-    i = 0
+    pid  = win32api.GetCurrentProcessId()
+    mask = 15 
+    handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, True, pid)
+    win32process.SetProcessAffinityMask(handle, mask)
+    
+    
     while True:
-        i += 1
-        print(q.get(), i)        
+       
+        print(q.get())        
 
 def main(q):
     
@@ -90,15 +88,13 @@ def main(q):
         filename_arg = f"Super Mario 64 (USA).z64"
     elif len(args) == 2:
         filename_arg = args[1]
+
     with open(filename_arg, "rb") as file:
         cartridge_data = list(file.read())
         
-        q.put(f"Loaded game ROM ({len(cartridge_data)} bytes)")
+        q.put(f"Loaded game ROM {len(cartridge_data)} bytes")
 
-    with open("pifdata.bin", "rb") as bootfile:
-        pifdata = list(bootfile.read())
 
-        q.put(f"Loaded boot ROM ({len(pifdata)}) bytes")
 
     ram_data = [0] * (8192 * 1024)
 
@@ -118,34 +114,41 @@ def main(q):
     #rdp.set_title(f'{rom.getImageName()} -  {rom.getCountry()} Version')
 
     
-    
+    pid  = win32api.GetCurrentProcessId()
+    mask = 1
+    handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, True, pid)
+    win32process.SetProcessAffinityMask(handle, mask) 
 
     
-    pid  = win32api.GetCurrentProcessId()
-    mask = 1 # core 7
-    handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, True, pid)
-    win32process.SetProcessAffinityMask(handle, mask)
-    
-    for i in range(99999999999):
-        
-        start = timer()
+
+    i = 0
+    start = time.time()
+    while 1:
+
+   
+
+        i += 1
     
         try:
             
-            fetch = cpu.fetch()
+            fetch = cpu.fetch(cpu.get_pc())
             
             decode = cpu.decode(fetch)
-            q.put(f'pc: {hex(cpu.get_pc())}, {fetch}, time: {timedelta(seconds=timer()-start)}')
+            
+          
+         
+            q.put(f'pc: {hex(cpu.get_pc())}, instruction: {fetch}, op: {i}')
+          
         except Exception as e:
-            q.put(f'An Error Occurred: {e}, pc: {hex(cpu.get_pc())} asm: {fetch} {traceback.format_exc()}')
+            q.put(f'An Error Occurred: {e}, pc: {hex(cpu.get_pc())} asm: {fetch} op: {i}, {traceback.format_exc()}')
             break
        
                #rdp.draw()
 
+    print(time.time() - start)
 
 
-
-
+    quit()
 
 
 
@@ -155,6 +158,7 @@ def main(q):
 if __name__ == "__main__":
 
 
+    
     q = Queue()
     debugger = Process(target=debug, args=(q,))
     worker = Process(target=main, args=(q,))
