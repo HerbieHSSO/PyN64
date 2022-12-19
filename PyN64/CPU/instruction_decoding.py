@@ -112,7 +112,6 @@ def signToUnsign(value, bits):
 
 def FetchAndDecode(cpu, instruction):
     
-
     pc = cpu.get_pc() 
     instruction = int(instruction,16)
 
@@ -121,7 +120,7 @@ def FetchAndDecode(cpu, instruction):
     #print(f'pc: {hex(pc)}, {hex(instruction)}', flush=True)
 
  
-    
+    cpu.increase_op()
    
     
     
@@ -139,7 +138,7 @@ def FetchAndDecode(cpu, instruction):
 
     func = instruction & 0x3f
    
-    base = (instruction & 0x3e00000) >> 21
+    #base = (instruction & 0x3e00000) >> 21
     
     imm = instruction & 0xFFFF
     
@@ -180,7 +179,7 @@ def FetchAndDecode(cpu, instruction):
         if special == 0x00:
                 if func == 0x08:
                     #print(f'jr {rs}')
-                    return (FetchAndDecode(cpu, cpu.execute_next_instruction(cpu, pc)),cpu.set_pc(JR(cpu.registers.get(rs))))
+                    return (FetchAndDecode(cpu, cpu.execute_next_instruction(cpu, pc)), cpu.set_pc(JR(cpu.registers.get(rs))))
                
         if special == 0x09:
                 #print(f'jalr {rs}')
@@ -374,12 +373,12 @@ def FetchAndDecode(cpu, instruction):
         return cpu.set_pc(J(target, pc))
     if opcode == 0x03:
         #print(f'jal {hex(target)}')
-        return (cpu.registers.set('ra', pc), cpu.set_pc(JAL(target, pc)))
+        return (FetchAndDecode(cpu, cpu.execute_next_instruction(cpu, pc)), cpu.registers.set('ra', pc+4), cpu.set_pc(JAL(target, pc)))
     if opcode == 0x04:
         rs = cpu.registers.get(rs)
         rt = cpu.registers.get(rt)
         #print(f'beq {rs} {rt} {hex(pc + sign_extend(imm << 2,18) + 4)}')
-        return (FetchAndDecode(cpu, cpu.execute_next_instruction(cpu, pc)), cpu.set_pc(BNE(rs, rt, imm, pc)))
+        return (FetchAndDecode(cpu, cpu.execute_next_instruction(cpu, pc)), cpu.set_pc(BEQ(rs, rt, imm, pc)))
     if opcode == 0x05:
         rs = cpu.registers.get(rs)
         rt = cpu.registers.get(rt)
@@ -436,42 +435,42 @@ def FetchAndDecode(cpu, instruction):
         return cpu.registers.set(rt, DADDIU(cpu.registers.get(rt), cpu.registers.get(rs), imm))
     if opcode == 0x1A:
         print(f'ldl {rt} {rs} {imm}')
-        return cpu.registers.set(rt, cpu.loadmem(LDL(cpu.registers.get(rt), cpu.registers.get(rs), imm)))
+        return cpu.registers.set(rt, cpu.load(LDL(cpu.registers.get(rt), cpu.registers.get(rs), imm)))
     if opcode == 0x1A:
         print(f'ldr {rt} {rs} {imm}')
-        return cpu.registers.set(rt, cpu.loadmem(LDR(cpu.registers.get(rt), cpu.registers.get(rs), imm)))
+        return cpu.registers.set(rt, cpu.load(LDR(cpu.registers.get(rt), cpu.registers.get(rs), imm)))
        
     if opcode == 0x20:
         print(f'lb {rt} {rs} {imm}')
-        return cpu.registers.set(rt, cpu.loadmem(LB(cpu.registers.get(rt), cpu.registers.get(rs), imm)))
+        return cpu.registers.set(rt, cpu.load(LB(cpu.registers.get(rt), cpu.registers.get(rs), imm)))
     if opcode == 0x21:
         print(f'lh {rt} {rs} {imm}')
-        return cpu.registers.set(rt, cpu.loadmem(LH(cpu.registers.get(rt), cpu.registers.get(rs), imm)))
+        return cpu.registers.set(rt, cpu.load(LH(cpu.registers.get(rt), cpu.registers.get(rs), imm)))
     if opcode == 0x22:
         print(f'lwl {rt} {rs} {imm}')
-        return cpu.registers.set(rt, cpu.loadmem(LWL(cpu.registers.get(rt), cpu.registers.get(rs), imm)))
+        return cpu.registers.set(rt, cpu.load(LWL(cpu.registers.get(rt), cpu.registers.get(rs), imm)))
     if opcode == 0x23:
         #print(f'lw {rt} {rs} {imm}')
 
-        return cpu.registers.set(rt, cpu.loadmem(LW(cpu.registers.get(rt), cpu.registers.get(rs), imm)))
+        return cpu.registers.set(rt, cpu.load(LW(cpu.registers.get(rt), cpu.registers.get(rs), imm)))
     if opcode == 0x24:
         #print(f'lbu {rt} {rs} {imm}')
-        return cpu.registers.set(rt, cpu.loadmem(LBU(cpu.registers.get(rt), cpu.registers.get(rs), sign_extend(imm,16))))
+        return cpu.registers.set(rt, cpu.load(LBU(cpu.registers.get(rt), cpu.registers.get(rs), sign_extend(imm,16))))
     if opcode == 0x25:
         print(f'lhu {rt} {rs} {imm}')
-        return cpu.registers.set(rt, cpu.loadmem(LHU(cpu.registers.get(rt), cpu.registers.get(rs), imm)))
+        return cpu.registers.set(rt, cpu.load(LHU(cpu.registers.get(rt), cpu.registers.get(rs), imm)))
     if opcode == 0x26:
         print(f'lwr {rt} {rs} {imm}')
-        return cpu.registers.set(rt, cpu.loadmem(LWR(cpu.registers.get(rt), cpu.registers.get(rs), target)))
+        return cpu.registers.set(rt, cpu.load(LWR(cpu.registers.get(rt), cpu.registers.get(rs), target)))
     if opcode == 0x27:
         print(f'lwu {rt} {rs} {imm}')
-        return cpu.registers.set(rt, cpu.loadmem(LWU(cpu.registers.get(rt), cpu.registers.get(rs), target)))
+        return cpu.registers.set(rt, cpu.load(LWU(cpu.registers.get(rt), cpu.registers.get(rs), target)))
     if opcode == 0x28:
         print(f'sb {rt} {rs} {imm}')
         return cpu.store(imm, SB(cpu.registers.get(rt), cpu.registers.get(rs), target))
     if opcode == 0x29:
         print(f'sh {rt} {rs} {imm}')
-        return cpu.store(imm, SH(cpu.registers.get(rt), cpu.registers.get(rs), imm))
+        return cpu.store(SH(cpu.registers.get(rt), cpu.registers.get(rs), imm), cpu.registers.get(rt))
     if opcode == 0x2A:
         print(f'swl {rt} {rs} {imm}')
         return cpu.store(imm, SWL(cpu.registers.get(rt), cpu.registers.get(rs), target))

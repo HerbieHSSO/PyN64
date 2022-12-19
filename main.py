@@ -18,11 +18,12 @@ from PyN64.RDP import *
 from PyN64.CPU.instruction import ADD
 from PyN64.CPU.instruction_decoding import FetchAndDecode
 from PyN64.RSP.decode import FetchAndDecodeRSP
-import win32api, win32con, win32process
+
 
 import sys
 import keyboard
 import time
+import multiprocessing as mp
 from multiprocessing import Process, Queue
 from datetime import timedelta
 import traceback
@@ -35,8 +36,8 @@ def BOOT(cpu, rom):
 
     dmem = {}
    
-    for i in range(0x40, 0x1000):
-        dmem.update({f'{i}' : f'{rom.read(i)}'})
+    for i in range(0x40, 0x1000, 4):
+        dmem.update({f'{i}' : f'{rom.read(i):02x}{rom.read(i+1):02x}{rom.read(i+2):02x}{rom.read(i+3):02x}'})
     
     
     cpu.memory.overwrite('DMEM', dmem)
@@ -67,15 +68,14 @@ def BOOT(cpu, rom):
     cpu.registers.set('t8', 3)
     cpu.registers.set('t9', -1645497009)
     cpu.registers.set('sp', -1543495696)
-    cpu.registers.set('ra', -1543498416)
+    
+    
+    
+
 
 
 def debug(q):
-    pid  = win32api.GetCurrentProcessId()
-    mask = 15 
-    handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, True, pid)
-    win32process.SetProcessAffinityMask(handle, mask)
-    
+
     
     while True:
        
@@ -92,8 +92,8 @@ def main(q):
     with open(filename_arg, "rb") as file:
         cartridge_data = list(file.read())
         
-        q.put(f"Loaded game ROM {len(cartridge_data)} bytes")
-
+        #q.put(f"Loaded game ROM {len(cartridge_data)} bytes")
+        print(f"Loaded game ROM {len(cartridge_data)} bytes")
 
 
     ram_data = [0] * (8192 * 1024)
@@ -113,34 +113,39 @@ def main(q):
     
     #rdp.set_title(f'{rom.getImageName()} -  {rom.getCountry()} Version')
 
-    
-    pid  = win32api.GetCurrentProcessId()
-    mask = 1
-    handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, True, pid)
-    win32process.SetProcessAffinityMask(handle, mask) 
+
 
     
 
     i = 0
     start = time.time()
-    while 1:
+    while True:
 
    
 
         i += 1
     
         try:
-            
-            fetch = cpu.fetch(cpu.get_pc())
-            
+            #print(f'pc: {hex(cpu.get_pc())}, ', end="")
+            start_time = time.time()
+            if cpu.registers.get('t0') == 1048576:
+                None
+            fetch = cpu.fetch() 
+            print('pc: ', hex(cpu.get_pc()))
+            if hex(cpu.get_pc()) == hex(0x803245f0):
+                print(hex(cpu.get_pc()))
+                None
+            #print(f'instruction: {fetch}, ', end="")
             decode = cpu.decode(fetch)
             
-          
-         
-            q.put(f'pc: {hex(cpu.get_pc())}, instruction: {fetch}, op: {i}')
-          
+            #print(f'op: {cpu.get_op()}, ', end="")
+            #print(f'time: {time.time() - start_time}')
+
+            #q.put(f'pc: {hex(cpu.get_pc())}, instruction: {fetch}, op: {i}, time: {time.time() - start_time}')
+            #print(f'pc: {hex(cpu.get_pc())}, instruction: {fetch}, op: {i}, time: {time.time() - start_time}')
         except Exception as e:
-            q.put(f'An Error Occurred: {e}, pc: {hex(cpu.get_pc())} asm: {fetch} op: {i}, {traceback.format_exc()}')
+            #q.put(f'An Error Occurred: {e}, pc: {hex(cpu.get_pc())} asm: {fetch} op: {i}, {traceback.formatf_exc()}')
+            print(f'An Error Occurred: {e}, pc: {hex(cpu.get_pc())} asm: {fetch} op: {cpu.get_op()}, {traceback.format_exc()}')
             break
        
                #rdp.draw()
@@ -148,7 +153,7 @@ def main(q):
     print(time.time() - start)
 
 
-    quit()
+    #quit()
 
 
 
@@ -157,8 +162,8 @@ def main(q):
 
 if __name__ == "__main__":
 
-
-    
+    main("q")
+    """
     q = Queue()
     debugger = Process(target=debug, args=(q,))
     worker = Process(target=main, args=(q,))
@@ -166,7 +171,7 @@ if __name__ == "__main__":
     worker.start()
     debugger.start()
     
-
+    """
 
 
 

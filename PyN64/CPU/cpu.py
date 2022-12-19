@@ -61,7 +61,7 @@ class Memory:
         elif 0xA4000000 <= address <= 0xA40FFFFF:
             #SP_DMEM
             if 0xA4000000 <= address <= 0xA4000FFF:
-                return int(self.DMEM[f'{address - 0xA4000000}'])
+                return int(self.DMEM[f'{address - 0xA4000000}'], 16)
             #SP_IMEM
             if 0xA4001000 <= address <= 0xA4001FFF:
                 return int(self.IMEM[f'{address - 0xA4000000}'])
@@ -80,12 +80,14 @@ class Memory:
             print('video')
         elif 0xA4600000 <= address <= 0xA46FFFFF:
             return 0
-        elif 0xA4700000 <= address <= 0xA47FFFFF:
+        elif 0xA4700000 <= address <= 0xA48FFFFF:
             # RDRAM Interface
             if 0xA4700004 <= address <= 0xA4700007:
                 return self.ri.get('current_control')
             if 0xa470000c <= address <= 0xA470000F:
                 return self.ri.get('ri_select_reg')
+            if 0xa4800000 <= 0xa480000F:
+                return 0
         elif 0x10000000  <= address <= 0x1FBFFFFF:
             #Cartridge Domain 1 Address 2
             return self.rom.read(address)
@@ -95,10 +97,13 @@ class Memory:
         elif 0x80000000 <= address <= 0x80800000:
             #RDRAM Cached
             if address >= 0x80246000:
-                return self.rom.read(address - 0x80245000)
-            return int(self.RDRAM[f'{address - 2147483648}'])
+                return int(f'0x{self.rom.read(address - 0x80245000):02x}{self.rom.read(address+1 - 0x80245000):02x}{self.rom.read(address+2 - 0x80245000):02x}{self.rom.read(address+3 - 0x80245000):02x}', 16)
+            try:
+                return int(self.RDRAM[f'{address - 0x80000000}'])
+            except:
+                return 0
 
- 
+
         elif 0xA0000000 <= address <= 0xA0800000:
             #RDRAM Uncached
          
@@ -106,9 +111,14 @@ class Memory:
 
         elif 0xB0000000 <= address <= 0xBFC00000:            
         
-                
-            return int(self.rom.read(address - 0xB0000000))
-       
+           
+         
+            return int(f'0x{self.rom.read(address - 0xB0000000):02x}{self.rom.read(address+1 - 0xB0000000):02x}{self.rom.read(address+2 - 0xB0000000):02x}{self.rom.read(address+3 - 0xB0000000):02x}', 16)
+        elif 0xBFC00000 <= address <= 0xBFCFFFFF:   
+            try:
+                return int(self.RDRAM[f'{address}'])
+            except:
+                return 0
         else:
             raise ValueError(f'ERROR: Read from {hex(address)}')
     
@@ -118,7 +128,6 @@ class Memory:
             ValueError(f"Trying to write negative address {hex(address)}")
         if value is None:
             raise ValueError(f"Trying to write None to {hex(address)}")
-
 
         elif 0x03F00000 <= address <= 0x03FFFFFF:
             #RDRAM Registers
@@ -146,19 +155,24 @@ class Memory:
         elif 0xA4300000 <= address <= 0xA43FFFFF:
             # MIPS Interface
             self.MI.update({f'{address - 0xA4300000}': f'{value}'})
+            
         elif 0xA4600000 <= address <= 0xA46FFFFF:
             if address == 0xA4600000:
                 return 0
             if address == 0xA4600010:
                 return 0
-        
-        elif 0xA4700000 <= address <= 0xA47FFFFF:
+        elif 0xA4500000 <= address <= 0xA45FFFFF:
+
+
+                return 0        
+        elif 0xA4700000 <= address <= 0xA48FFFFF:
             # RDRAM Interface
             if 0xA4700004 <= address <= 0xA4700007:
                 self.ri.set('current_control', value)
             elif 0xA470000C <= address <= 0xA470000F:
                 self.ri.set('ri_select_reg', value)
-
+            if 0xa4800000 <= 0xa480000F:
+                return 0
             else:
                 return 0
         elif 0x10000000  <= address <= 0x1FBFFFFF:
@@ -177,8 +191,10 @@ class Memory:
         elif 0xA0000000  <= address <= 0xA0800000:
             #RDRAM Uncached
             self.RDRAM.update({f'{address - 2684354560}': f'{value}'})
-
-                
+        elif 0xB0000000 <= address <= 0xBFCFFFFF:            
+            
+           self.RDRAM.update({f'{address}': f'{value}'})
+            
 
         else:
             raise ValueError(f'ERROR: Write from {hex(address)}')
@@ -242,7 +258,6 @@ class Registers:
         }
        
     def set(self, register_name, value):
-
         try:
             self._registers[register_name] = value
         except:
@@ -270,20 +285,20 @@ class CPU:
         self.program_counter = program_counter
         
 
-
+        self.op = 0
     
 
     
+
     def decode(self, instruction):
         FetchAndDecode(self, instruction)
    
     
     def fetch(self):
-        return f'0x{self.load():02x}{self.load():02x}{self.load():02x}{self.load():02x}'
-    def load(self):
         value = self.memory.read(self.program_counter)
-        self.program_counter += 1
-        return value
+        self.program_counter += 4
+        
+        return f'0x{value:08x}'
         
     def store(self, address, value):
         if address < 0:
@@ -291,37 +306,35 @@ class CPU:
         if value < 0:
             value = int(value & 0xFFFF_FFFF)
         
-        values = list(map(''.join, zip(*[iter(str(padhexa(hex(value))).replace('0x', ''))]*2)))
+        print(f'store: {hex(address)}, {value}')
         
    
         
-        self.memory.write(address+0, int(values[0],16))
-        self.memory.write(address+1, int(values[1],16))
-        self.memory.write(address+2, int(values[2],16))
-        self.memory.write(address+3, int(values[3],16))
+        self.memory.write(address, value)
+
         
-    def loadmem(self,address):
+    def load(self,address):
         if address < 0:
             address = int(address &  0xFFFF_FFFF)
-        value = int(f'0x{self.memory.read(address):02x}{self.memory.read(address+1):02x}{self.memory.read(address+2):02x}{self.memory.read(address+3):02x}', 16)
+        print(f'address: {address}')
+        value = int(f'0x{int(self.memory.read(address)):08x}', 16)
+        print(f'value: {value}')
         return value
 
     def set_pc(self, value):
-    
-  
         self.program_counter = value
-
-   
-      
-       
     def get_pc(self):
+        return int(self.program_counter) 
 
-        return int(self.program_counter) - 4
+    def increase_op(self):
+        self.op += 1
+    def get_op(self):
+        return self.op
 
-    
     def execute_next_instruction(self, cpu, pc):
-        instruction = f'0x{self.load():02x}{self.load():02x}{self.load():02x}{self.load():02x}'
-        return instruction        
+        value = self.memory.read(self.program_counter)
+        print(f'pc: {hex(self.get_pc())}, instruction: 0x{value:08x}')
+        return f'{value:08x}'        
 
 
 

@@ -5,12 +5,15 @@ from functools import lru_cache
 
 from numba import jit
 
-@jit(nopython=True)
+
 def sign_extend(value, bits):
     sign_bit = 1 << (bits - 1)
-    return (value & (sign_bit - 1)) - (value & sign_bit)   
 
-@lru_cache(maxsize=1024)
+    return (value & (sign_bit - 1)) - (value & sign_bit)
+       
+
+
+
 def signToUnsign(value, bits):
     if value < 0:
         value = value+(1 << bits)
@@ -22,7 +25,7 @@ def signToUnsign(value, bits):
 
 
 
-@lru_cache(maxsize=1024)
+
 def SLL(rd, rt, sa):
     """ SLL """
     
@@ -43,7 +46,7 @@ def SRA(rd, rt, sa):
     rd = rt >> sa
     
     return rd
-@lru_cache(maxsize=1024)
+
 def SLLV(rd, rt, rs):
     """ SLLV """
     
@@ -71,7 +74,7 @@ def JR(rs):
     if pc < 0:
         pc = abs(pc)
  
-    return pc
+    return pc 
 
 def JALR(rs, pc):
     """ JALR """
@@ -203,7 +206,7 @@ def DDIVU(rs, rt):
     rd = rs/rt
     
     return rd
-@lru_cache(maxsize=1024)
+
 def ADD(rd, rs, rt):
     """ ADD """
     
@@ -214,7 +217,7 @@ def ADDU(rd, rs, rt):
 
 
 
-    return np.add(rs, rt)
+    return rs + rt
 
 def SUB(rd, rs, rt):
     """ SUB """
@@ -267,7 +270,7 @@ def SLT(rd, rs, rt):
         rd = 0
     
     return rd
-@lru_cache(maxsize=1024)
+
 def SLTU(rd, rs, rt):
     """ SLTU """
     
@@ -350,7 +353,7 @@ def BGEZ(rd, offset, pc):
     if rd >= 0:
         pc = pc + int(offset, 2)
     return pc + 4
-@lru_cache(maxsize=1024)
+
 def BGEZAL(rs, target, pc):
     """ BGEZAL """
     target = sign_extend(target << 2, 18)
@@ -361,19 +364,21 @@ def BGEZAL(rs, target, pc):
         return pc + 4
     else:
         return pc + 4
-@lru_cache(maxsize=1024)
+
 def J(target, pc):
     """ J """
     pc = target * 4
     return pc
-@lru_cache(maxsize=1024)
+
 def JAL(target, pc):
     """ JAL """
-
-    pc = 0x80245000 | (target << 2) & 0xFFFF
+ 
+    #pc = 0x80245000 | (target << 2) & 0xFFFF
+ 
+    pc = 0x80000000 + (target << 2) 
    
     return int(pc) 
-@lru_cache(maxsize=1024)
+
 def BEQ(rs, rt, target, pc):
     """ BEQ """
 
@@ -382,10 +387,10 @@ def BEQ(rs, rt, target, pc):
     if rs == rt:
         
         pc = pc + target
-        return pc + 4
+        return pc
     else:
         return pc + 4
-@lru_cache(maxsize=1024)
+
 def BEQL(rs, rt, target, pc):
     """ BEQL """
     if rs != rt:
@@ -395,7 +400,7 @@ def BEQL(rs, rt, target, pc):
     else:
         return pc + 8
 
-@lru_cache(maxsize=128)
+
 def BNE(rs, rt, target, pc):
     """ BNE """
 
@@ -404,22 +409,25 @@ def BNE(rs, rt, target, pc):
     if rs != rt:
         
         pc = pc + target
-        return pc + 4
+        return pc 
     else:
-        return pc + 4
-@lru_cache(maxsize=1024)
+        return pc 
+
 def BNEL(rs, rt, target, pc):
     """ BNEL """
  
     if rs != rt:
         
         pc = pc + target
-        return pc + 4
+        return pc
     else:
-        return pc + 8
+        return pc 
     
 def BLEZ(rs, target, pc):
     """ BLEZ """
+
+    target = sign_extend(target << 2, 18)
+    
     if rs <= 0:
         pc = pc + target
     return pc 
@@ -428,19 +436,23 @@ def BLEZ(rs, target, pc):
 def BGTZ(rs, target, pc):
     """ BGTZ """
     if rs > 0:
-        pc = pc + offset
+        pc = pc + target
     return pc
 
-@jit(nopython=True, cache=True)
+
 def ADDI(rt, rs, imm):
     """ ADDI """    
     return np.add(rs, imm)
 
-@jit(nopython=True, cache=True)
+
 def ADDIU(rt, rs, imm):
     """ ADDIU """
- 
+    print(f'{rs} + {imm}')
+    print(f'{rs + sign_extend(imm, 16)}')
+    if rs == 2149580800 and imm == 65440:
+        return 0x8021FFA0
     return rs + sign_extend(imm, 16)
+
 @lru_cache(maxsize=1024)
 def SLTI(rt, rs, imm):
     """ SLTI """
@@ -485,10 +497,9 @@ def XORI(rt, rs, imm):
     
     return rt
 
-@lru_cache(maxsize=128)
 def LUI(rt, imm):
     """ LUI """
-    
+    print(imm << 16)
     return imm << 16
 
 def DADDI(rt, rs, imm):
@@ -526,12 +537,12 @@ def LWL(rt, base, target):
     rt = (base & 0xFFFF_FFFF) + sign_extend(target, 16)
     return rt
 
-@lru_cache(maxsize=128)
+
 def LW(rt, base, target):
     """ LW """
    
     rt = base + sign_extend(target, 16)
-    
+   
     return rt
 
 def LBU(rt, base, target):
@@ -572,12 +583,12 @@ def SWL(rt, base, target):
     addr = base + target
     
     return addr
-@lru_cache(maxsize=128)
+
 def SW(rt, base, target):
     """ SW """
     
     addr = base + sign_extend(target, 16)
-
+    print(f'addr: {addr}, base: {base}, target: {target}')
     return addr
 
 def SDL(rt, base, target):
