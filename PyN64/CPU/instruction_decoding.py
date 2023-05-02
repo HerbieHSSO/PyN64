@@ -97,7 +97,14 @@ REG_NAMES = [
     "s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "t8", "t9", "k0", "k1", "gp", "sp", "fp", "ra",
     "hi", "lo",
 ];
-
+CP0_REG_NAMES = [
+    "index", "random", "entrylo0", "entrylo1", "context", "pagemask", "wired", "entryhi", "hwrena", "badvaddr", "count", "compare", "status", "cause", "epc", "prid",
+    "config", "lladdr", "watchlo", "watchhi", "?20?", "?21?", "?22?", "debug", "depc", "perfctl", "ecc", "cacheerr", "taglo", "taghi", "errorepc", "desave",
+];
+CP1_REG_NAMES = [
+    "f0", "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12", "f13", "f14", "f15",
+    "f16", "f17", "f18", "f19", "f20", "f21", "f22", "f23", "f24", "f25", "f26", "f27", "f28", "f29", "f30", "f31",
+];
 def sign_extend(value, bits):
     sign_bit = 1 << (bits - 1)
     return (value & (sign_bit - 1)) - (value & sign_bit)
@@ -117,7 +124,7 @@ def FetchAndDecode(cpu, instruction):
 
 
 
-    #print(f'pc: {hex(pc)}, {hex(instruction)}', flush=True)
+    print(f'pc: {hex(pc)}, {hex(instruction)}')
 
  
     cpu.increase_op()
@@ -359,7 +366,7 @@ def FetchAndDecode(cpu, instruction):
             rt = cpu.registers.get(rt)
             
        
-            return (FetchAndDecode(cpu, cpu.execute_next_instruction(cpu, pc)), cpu.set_pc(BGEZAL(rs, imm, pc)))
+            return (FetchAndDecode(cpu, cpu.execute_next_instruction(cpu, pc)), cpu.registers.set('ra', pc+8), cpu.set_pc(BGEZAL(rs, imm, pc)))
 
          
         if vrt == 0x12:
@@ -382,6 +389,7 @@ def FetchAndDecode(cpu, instruction):
     if opcode == 0x05:
         rs = cpu.registers.get(rs)
         rt = cpu.registers.get(rt)
+        bne = BNE(rs, rt, imm, pc)
         #print(f'bne {rs} {rt} {hex(pc + sign_extend(imm << 2,18) + 4)}')
         return (FetchAndDecode(cpu, cpu.execute_next_instruction(cpu, pc)), cpu.set_pc(BNE(rs, rt, imm, pc)))
     if opcode == 0x06:
@@ -424,7 +432,11 @@ def FetchAndDecode(cpu, instruction):
         #print(f'bnel {rs} {rt} {sign_extend(imm << 2, 18) + 4}')
         rs = cpu.registers.get(rs)
         rt = cpu.registers.get(rt)
-        return (FetchAndDecode(cpu, cpu.execute_next_instruction(cpu, pc)), cpu.set_pc(BNEL(rs, rt, sign_extend(imm<<2,18), pc)))
+        return cpu.set_pc(BNEL(rs, rt, sign_extend(imm<<2,18), pc))
+
+
+
+
 
     if opcode == 0x18:
         #print(f'daddi {rt} {rs} {imm}')
@@ -489,25 +501,49 @@ def FetchAndDecode(cpu, instruction):
         None
 
 
+    if opcode == 0x10:
+        rs_cp0 = CP0_REG_NAMES[(instruction >> 21) & 0x1f]
+        rt_cp0 = CP0_REG_NAMES[(instruction >> 16) & 0x1f]
+        rd_cp0 = CP0_REG_NAMES[(instruction >> 11) & 0x1f]
 
+        M = (instruction >> 21) & 0x1f
+        eret = instruction & 0b0000_0000_0000_0000_0000_0000_0111_1111
+        if M == 0x04:
+            " MTC0 "
+            return cpu.cp0.registers.set(rd_cp0, cpu.registers.get(rt))
+        if M == 0x00:
+            " MFC0 "
+            return cpu.registers.set(rt, cpu.cp0.registers.get(rd_cp0))
+    
 
+        if instruction == 0x42000018:
+            cpu.set_pc(0x80000180)
+            cpu.memory.write(2150848944, 2150868784)
     
 
 
+   
 
 
 
 
+    # ----------------> CP1 <----------------
 
 
+    if opcode == 0x11:
+        # CFC1
+        if (instruction >> 21) & 0x1f == 0x02:
+            fs = CP1_REG_NAMES[(instruction >> 11) & 0x1f]
+            if fs == 'f0' or 'f31':
+                cpu.registers.set(rt, cpu.cp1.registers.get_control(fs))
 
+        if (instruction >> 21) & 0x1f == 0x06:
+            # CTC1
+            t = CP0_REG_NAMES[(instruction >> 16) & 0x1f]
+            fs = CP1_REG_NAMES[(instruction >> 11) & 0x1f]
 
-
-
-
-
-
-
+            if fs == 'f31':
+                cpu.cp1.registers.set_control(fs, cpu.registers.get(rt))
 
 
 

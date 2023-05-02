@@ -3,7 +3,7 @@ from PyN64.CPU import cpu
 import numpy as np
 from functools import lru_cache
 
-from numba import jit
+
 
 
 def sign_extend(value, bits):
@@ -20,7 +20,9 @@ def signToUnsign(value, bits):
     return value
 
 
-
+def LoSigned(n):
+    n = n & 0xffffffff
+    return n | (-(n & 0x80000000))
 
 
 
@@ -50,13 +52,14 @@ def SRA(rd, rt, sa):
 def SLLV(rd, rt, rs):
     """ SLLV """
     
-    
-    return rt << rs
+    rd = sign_extend(rt << (rs & 0x1f),32)
+
+    return rd
 
 def SRLV(rd, rt, rs):
     """ SRLV """
     
-    rd = rt >> rs
+    rd = sign_extend(rt >> (rs & 0x1f),32)
     
     return rd
 
@@ -217,7 +220,7 @@ def ADDU(rd, rs, rt):
 
 
 
-    return rs + rt
+    return LoSigned(LoSigned(rs & 0xffffffff) + LoSigned(rt & 0xffffffff) & 0xffffffff)
 
 def SUB(rd, rs, rt):
     """ SUB """
@@ -243,15 +246,16 @@ def AND(rd, rs, rt):
 def OR(rd, rs, rt):
     """ OR """
     
-    rd = rs | rt
+    rd = sign_extend(rs | rt, 32)
 
     return rd
 
 def XOR(rd, rs, rt):
     """ XOR """
-    
-    rd = rs ^ rt
-    
+    print(rs, rt)
+    print(rs ^ rt)
+    rd = sign_extend(sign_extend(rs & 0xffffffff,32) ^ sign_extend(rt & 0xffffffff,32) & 0xffffffff,32)
+
     return rd
 
 def NOR(rd, rs, rt):
@@ -357,13 +361,15 @@ def BGEZ(rd, offset, pc):
 def BGEZAL(rs, target, pc):
     """ BGEZAL """
     target = sign_extend(target << 2, 18)
-    pc = pc + 8
-    if rs >= 0:
-        
+    #pc = pc + 8
+    if rs <= 0:
         pc = pc + target
-        return pc + 4
+        return pc
+        
+
     else:
         return pc + 4
+        
 
 def J(target, pc):
     """ J """
@@ -405,13 +411,14 @@ def BNE(rs, rt, target, pc):
     """ BNE """
 
     target = sign_extend(target << 2, 18)
-
-    if rs != rt:
+    
+    if (rs & 0xFFFF_FFFF) == (rt & 0xFFFF_FFFF) or (rs == rt):
+        return pc + 4
         
+    else:
         pc = pc + target
         return pc 
-    else:
-        return pc 
+        
 
 def BNEL(rs, rt, target, pc):
     """ BNEL """
@@ -421,16 +428,19 @@ def BNEL(rs, rt, target, pc):
         pc = pc + target
         return pc
     else:
-        return pc 
+        return pc + 4 
     
 def BLEZ(rs, target, pc):
     """ BLEZ """
 
     target = sign_extend(target << 2, 18)
     
-    if rs <= 0:
+    if (rs & 0xFFFF_FFFF) >= 0 or (rs >= 0):
+        return pc + 4
+        
+    else:
         pc = pc + target
-    return pc 
+        return pc
 
 @lru_cache(maxsize=128)
 def BGTZ(rs, target, pc):
@@ -442,16 +452,16 @@ def BGTZ(rs, target, pc):
 
 def ADDI(rt, rs, imm):
     """ ADDI """    
-    return np.add(rs, imm)
+    return rs + imm
 
 
 def ADDIU(rt, rs, imm):
     """ ADDIU """
-    print(f'{rs} + {imm}')
-    print(f'{rs + sign_extend(imm, 16)}')
-    if rs == 2149580800 and imm == 65440:
-        return 0x8021FFA0
-    return rs + sign_extend(imm, 16)
+    #print(f'{rs} + {imm}')
+    #print(f'{rs + sign_extend(imm, 16)}')
+
+       
+    return (rs + sign_extend(imm, 16))
 
 @lru_cache(maxsize=1024)
 def SLTI(rt, rs, imm):
@@ -499,7 +509,7 @@ def XORI(rt, rs, imm):
 
 def LUI(rt, imm):
     """ LUI """
-    print(imm << 16)
+    #print(imm << 16)
     return imm << 16
 
 def DADDI(rt, rs, imm):
@@ -541,7 +551,7 @@ def LWL(rt, base, target):
 def LW(rt, base, target):
     """ LW """
    
-    rt = base + sign_extend(target, 16)
+    rt = sign_extend(target, 16) + base
    
     return rt
 
@@ -581,14 +591,16 @@ def SH(rt, base, target):
 def SWL(rt, base, target):
     """ SWL """
     addr = base + target
-    
+
     return addr
 
 def SW(rt, base, target):
     """ SW """
     
     addr = base + sign_extend(target, 16)
-    print(f'addr: {addr}, base: {base}, target: {target}')
+    #print(f'addr: {addr}, base: {base}, target: {target}')
+    if addr == 2150848944:
+        None
     return addr
 
 def SDL(rt, base, target):
@@ -598,6 +610,8 @@ def SDL(rt, base, target):
     return addr
 
 
+# =========== CP0 ===========
+
 
 @lru_cache(maxsize=128)
 def CACHE(base, op, offset):
@@ -605,9 +619,10 @@ def CACHE(base, op, offset):
     cache = op & 0x3
     act = (op >> 2) & 0x7
 
-
-
-
+def MTC0(rt, rd):
+    """ MTC0 """
+    result = rd = rt
+    return result
 
 
 

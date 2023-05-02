@@ -1,5 +1,5 @@
 from io import BytesIO
-import numba as nb
+
 
 
 def analysis(value):

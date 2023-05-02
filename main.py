@@ -54,6 +54,7 @@ def BOOT(cpu, rom):
     cpu.registers.set('at', 1)
     cpu.registers.set('v0', 247309622)
     cpu.registers.set('v1', 247309622)
+    cpu.registers.set('a0', 42294)
     cpu.registers.set('a1', -916884523)
     cpu.registers.set('a2', -1543495924)
     cpu.registers.set('a3', -1543495928)
@@ -64,14 +65,16 @@ def BOOT(cpu, rom):
     cpu.registers.set('t5', 335717580)
     cpu.registers.set('t6', 608805734)
     cpu.registers.set('t7', 822337825)
+    cpu.registers.set('s4', 1)
     cpu.registers.set('s6', 63)
     cpu.registers.set('t8', 3)
     cpu.registers.set('t9', -1645497009)
     cpu.registers.set('sp', -1543495696)
+    cpu.registers.set('ra', -1543498416)
     
-    
-    
-
+    cpu.cp0.registers.set('status', 0x34000000)
+    cpu.cp0.registers.set('cause', 0x34000000)
+    cpu.cp0.registers.set('count', 0x34000000)
 
 
 def debug(q):
@@ -121,35 +124,36 @@ def main(q):
     start = time.time()
     while True:
 
-   
+        "80327EA8 ERET"
 
         i += 1
     
         try:
             #print(f'pc: {hex(cpu.get_pc())}, ', end="")
             start_time = time.time()
-            if cpu.registers.get('t0') == 1048576:
-                None
+
             fetch = cpu.fetch() 
-            print('pc: ', hex(cpu.get_pc()))
-            if hex(cpu.get_pc()) == hex(0x803245f0):
+
+            #print('pc: ', hex(cpu.get_pc()))    
+            if hex(cpu.get_pc()) == hex(0x80323948):
                 print(hex(cpu.get_pc()))
                 None
+
+            
+                
             #print(f'instruction: {fetch}, ', end="")
             decode = cpu.decode(fetch)
-            
-            #print(f'op: {cpu.get_op()}, ', end="")
+
+            #print(f'op: {cpu.get_op()}, ', end="")EZ
             #print(f'time: {time.time() - start_time}')
 
             #q.put(f'pc: {hex(cpu.get_pc())}, instruction: {fetch}, op: {i}, time: {time.time() - start_time}')
             #print(f'pc: {hex(cpu.get_pc())}, instruction: {fetch}, op: {i}, time: {time.time() - start_time}')
-        except Exception as e:
-            #q.put(f'An Error Occurred: {e}, pc: {hex(cpu.get_pc())} asm: {fetch} op: {i}, {traceback.formatf_exc()}')
-            print(f'An Error Occurred: {e}, pc: {hex(cpu.get_pc())} asm: {fetch} op: {cpu.get_op()}, {traceback.format_exc()}')
-            break
        
                #rdp.draw()
-
+        except Exception as e:
+            print(f'An Error Occurred: {e}, pc: {hex(cpu.get_pc())} asm: {fetch} op: {cpu.get_op()}, {traceback.format_exc()}')
+            break
     print(time.time() - start)
 
 
@@ -172,6 +176,7 @@ if __name__ == "__main__":
     debugger.start()
     
     """
+
 
 
 

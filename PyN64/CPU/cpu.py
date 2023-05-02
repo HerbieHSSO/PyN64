@@ -3,10 +3,12 @@ from PyN64 import RDP
 from PyN64 import RSP
 from PyN64.RDRAM import ri
 from PyN64.CPU.instruction_decoding import FetchAndDecode
+from PyN64.CPU.cp0 import *
+from PyN64.CPU.cp1 import *
 from functools import lru_cache
-from numba import jit
 
-import numba as nb
+
+
 
 
 def analysis(value):
@@ -64,7 +66,7 @@ class Memory:
                 return int(self.DMEM[f'{address - 0xA4000000}'], 16)
             #SP_IMEM
             if 0xA4001000 <= address <= 0xA4001FFF:
-                return int(self.IMEM[f'{address - 0xA4000000}'])
+                return int(self.IMEM[f'{address}'])
             elif 0xA4080000 <= address <= 0xA4080008:
                 return 0
 
@@ -137,10 +139,10 @@ class Memory:
         elif 0xA4000000 <= address <= 0xA40FFFFF:
             #SP_DMEM
             if 0xA4000000 <= address <= 0xA4000FFF:
-                self.DMEM.update({f'{address - 0xA4000000}': f'{value}'})
+                self.DMEM.update({f'{address}': f'{value}'})
             #SP_IMEM
             if 0xA4001000 <= address <= 0xA4001FFF:
-                self.IMEM.update({f'{address - 0xA4000000}': f'{value}'})
+                self.IMEM.update({f'{address}': f'{value}'})
 
 
 
@@ -194,7 +196,6 @@ class Memory:
         elif 0xB0000000 <= address <= 0xBFCFFFFF:            
             
            self.RDRAM.update({f'{address}': f'{value}'})
-            
 
         else:
             raise ValueError(f'ERROR: Write from {hex(address)}')
@@ -259,7 +260,14 @@ class Registers:
        
     def set(self, register_name, value):
         try:
-            self._registers[register_name] = value
+
+            if register_name != "zr":
+                self._registers[register_name] = value
+
+            if register_name == "a3":
+                if self._registers[register_name] == 335766205774460:
+                    None
+                    
         except:
             self.special_registers[register_name] = value
     def get(self, register_name):
@@ -284,7 +292,8 @@ class CPU:
         self.memory = memory
         self.program_counter = program_counter
         
-
+        self.cp0 = CP0(CP0_Registers())
+        self.cp1 = CP1(CP1_Registers())
         self.op = 0
     
 
@@ -303,12 +312,13 @@ class CPU:
     def store(self, address, value):
         if address < 0:
             address = int(address & 0xFFFF_FFFF)
-        if value < 0:
-            value = int(value & 0xFFFF_FFFF)
+
+        if str(value) == "0x-5bffeab0":
+            None
+        #print(f'store: {hex(address)}, {value}')
         
-        print(f'store: {hex(address)}, {value}')
-        
-   
+        if address == 2952790036:
+            None   
         
         self.memory.write(address, value)
 
@@ -316,13 +326,17 @@ class CPU:
     def load(self,address):
         if address < 0:
             address = int(address &  0xFFFF_FFFF)
-        print(f'address: {address}')
-        value = int(f'0x{int(self.memory.read(address)):08x}', 16)
-        print(f'value: {value}')
+        #print(f'address: {address}')
+        print(self.memory.read(address))
+        value = int(f'0x{int(self.memory.read(address) & 0xFFFF_FFFF):08x}', 16)
+        if address == 0xB0000010:
+            None
+        #print(f'value: {value}')
         return value
 
     def set_pc(self, value):
         self.program_counter = value
+
     def get_pc(self):
         return int(self.program_counter) 
 
