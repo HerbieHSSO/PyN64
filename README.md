@@ -8,4 +8,4 @@ Status: Executing some instructions, unfortunately the performance is not the be
 Super Mario 64.Z64 tests:
 ![image](https://user-images.githubusercontent.com/54962184/170876652-eb3c5fb7-ce6d-4191-8a32-4d98476186ed.png)
 
-libraries: Numba, Numpy, pywin32
+
