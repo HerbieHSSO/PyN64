@@ -2,7 +2,7 @@
 Nintendo 64 emulator written in python
 
 use .Z64 Files Formats or convert .N64(little-endian) to Z64(big-endian)
-You can Convert little-endian to big-endian with LEtoBE.py script.
+You can Convert little-endian to big-endian with LEtoBE.py script, python LEtoBE.py [input.n64] [output.z64]
 
 Status: Executing some instructions, unfortunately the performance is not the best, and I need help with this.
 
