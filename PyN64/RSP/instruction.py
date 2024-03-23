@@ -1,14 +1,15 @@
 from PyN64.CPU import cpu
 
-import numpy as np
-from functools import lru_cache
+
 
 
 
 
 def sign_extend(value, bits):
     sign_bit = 1 << (bits - 1)
+
     return (value & (sign_bit - 1)) - (value & sign_bit)
+       
 
 
 
@@ -29,62 +30,58 @@ def LoSigned(n):
 def SLL(rd, rt, sa):
     """ SLL """
     
-    rd = sign_extend(rt << sa,32)
-
+    rd = sign_extend((rt & 0xFFFF_FFFF) << sa,32)
+    
     return rd
 
 def SRL(rd, rt, sa):
     """ SRL """
     
-    rd = sign_extend(rt >> sa, 32) 
+    rd = sign_extend((rt & 0xFFFF_FFFF) >> sa,32)
     
     return rd
 
 def SRA(rd, rt, sa):
     """ SRA """
     
-    rd = (rt & 0xFFFF_FFFF) >> sa
-
+    rd = rt >> sa
     
-    return sign_extend(rd,32)
+    return rd
 
 def SLLV(rd, rt, rs):
     """ SLLV """
     
+    rd = sign_extend(rt << (rs & 0x1f),32)
 
-    rd = (rt & 0xFFFF_FFFF) << (rs & 0X1F)
-    
-    return sign_extend(rd, 32)
+    return rd
 
 def SRLV(rd, rt, rs):
     """ SRLV """
     
-    rd = (rt & 0xFFFFFFFF) >> (rs & 0b11111)
+    rd = sign_extend(rt >> (rs & 0x1f),32)
     
-    return sign_extend(rd,32)
+    return rd
 
 def SRAV(rd, rt, rs):
     """ SRAV """
     
-    sa = rs & 0x1F
-
-    rd = (rt & 0xFFFF_FFFF) >> sa
-
+    rd = rt >> rs
     
-    
-    return sign_extend(rd,32)
+    return rd
 
 def JR(rs):
     """ JR """
-     
-    return rs & 0xFFFF_FFFF
+
+    pc = rs & 0xFFFF_FFFF
+    return pc 
 
 def JALR(rs, pc):
     """ JALR """
   
 
+    pc = rs & 0xFFFF_FFFF
     
-    return rs & 0xFFFF_FFFF
+    return pc
 
 def MFHI(rd, hi):
     """ MFHI """
@@ -168,10 +165,9 @@ def MULTU(rs, rt):
 def DIV(rs, rt):
     """ DIV """
     
-    rd = rs/rt
     
-    LO = sign_extend(rs//rt & 0xFFFF_FFFF, 64)
-    HI = sign_extend((rs%rt & 0xFFFF_FFFF) >> 64, 64)
+    LO = sign_extend(int(rs/rt), 32)
+    HI = sign_extend((rs % rt), 32)
  
     return [LO, HI]
 
@@ -202,58 +198,55 @@ def DMULTU(rs, rt):
 def DDIV(rs, rt):
     """ DDIV """
     
+    rd = rs/rt
+    
+    return rd
+
+def DDIVU(rs, rt):
+    """ DDIVU """
     print(rs, rt)
     LO = sign_extend(int(rs/rt),64)
     HI = sign_extend(int(rs%rt),64)
     
     return [LO, HI]
 
-def DDIVU(rs, rt):
-    """ DDIVU """
-    rs = rs & 0xFFFF_FFFF_FFFF_FFFF
-    rt = rt & 0xFFFF_FFFF_FFFF_FFFF
-    LO = int(rs/rt)
-    HI = int(rs%rt)
-    
-    return [LO, HI]
-
 def ADD(rd, rs, rt):
     """ ADD """
-    rd = (rs & 0xFFFF_FFFF) + (rt & 0xFFFF_FFFF)
-    return sign_extend(rd,32)
+    
+    return rs + rt
 
 def ADDU(rd, rs, rt):
     """ ADDU """
 
-    rd = (rs & 0xFFFF_FFFF) + (rt & 0xFFFF_FFFF)
 
-    return sign_extend(rd, 32)
+
+    return LoSigned(LoSigned(rs & 0xffffffff) + LoSigned(rt & 0xffffffff) & 0xffffffff)
 
 def SUB(rd, rs, rt):
     """ SUB """
     
-    rd = sign_extend((rs & 0xFFFF_FFFF) - (rt & 0xFFFF_FFFF),32)
+    rd = rs - rt
     
     return rd
 
 def SUBU(rd, rs, rt):
     """ SUBU """
     
-    rd = sign_extend((rs & 0xFFFF_FFFF) - (rt & 0xFFFF_FFFF),32)
+    rd = rs - rt
     
     return rd
 
 def AND(rd, rs, rt):
     """ AND """
     
-    rd = rs & rt
+    rd = (rs & rt) & 0xFFFF_FFFF
 
     return rd
 
 def OR(rd, rs, rt):
     """ OR """
     
-    rd = rs | rt
+    rd = sign_extend(rs | rt,32)
 
     return rd
 
@@ -261,8 +254,8 @@ def XOR(rd, rs, rt):
     """ XOR """
     print(rs, rt)
     print(rs ^ rt)
-    rd = rs ^ rt
-    print(rd)
+    rd = sign_extend(sign_extend(rs & 0xffffffff,32) ^ sign_extend(rt & 0xffffffff,32) & 0xffffffff,32)
+
     return rd
 
 def NOR(rd, rs, rt):
@@ -275,9 +268,10 @@ def NOR(rd, rs, rt):
 def SLT(rd, rs, rt):
     """ SLT """
 
+    if rs == 4294967295:
+        rs = -1
 
-
-    if sign_extend(rs,64) < sign_extend(rt,64):
+    if rs < rt:
         return 1
     else:
         return 0
@@ -285,7 +279,7 @@ def SLT(rd, rs, rt):
 def SLTU(rd, rs, rt):
     """ SLTU """
     
-    if (rs & 0xFFFF_FFFF_FFFF_FFFF) < (rt & 0xFFFF_FFFF_FFFF_FFFF):
+    if rs < rt:
         return 1
     else:
         return 0
@@ -295,30 +289,30 @@ def SLTU(rd, rs, rt):
 def DADD(rd, rs, rt):
     """ DADD """
     
-    rd = sign_extend(rs,64) + sign_extend(rt,64)
+    rd = rs + rt
     
-    return rd & 0xFFFF_FFFF_FFFF_FFFF
+    return rd
 
 def DADDU(rd, rs, rt):
     """ DADDU """
     
-    rd = sign_extend(rs,64) + sign_extend(rt,64)
+    rd = rs + rt
     
-    return rd & 0xFFFF_FFFF_FFFF_FFFF
+    return rd
 
 def DSUB(rd, rs, rt):
     """ DSUB """
     
-    rd = sign_extend(rs,64) - sign_extend(rt,64)
+    rd = rs - rt
     
-    return rd & 0xFFFF_FFFF_FFFF_FFFF
+    return rd
 
 def DSUBU(rd, rs, rt):
     """ DSUBU """
     
-    rd = sign_extend(rs,64) - sign_extend(rt,64)
+    rd = rs - rt
     
-    return rd & 0xFFFF_FFFF_FFFF_FFFF
+    return rd
 
 def TEQ(rs, rt):
     """ TEQ """
@@ -359,7 +353,7 @@ def DSRA32(rd, rt, sa):
 def DSRL(rd, rt, sa):
     """ DSRL """
     
-    rd = (rt & 0xFFFF_FFFF_FFFF_FFFF) >> sa
+    rd = rt >> sa
     
     return rd
 
@@ -372,40 +366,34 @@ def DSRA(rd, rt, sa):
 
 
 
-def BLTZ(rs, offset, pc):
+def BLTZ(rd, offset, pc):
     """ BLTZ """
-    target = sign_extend(target << 2, 18)
-    if sign_extend(rs,64) < 0:
-        pc = pc + target
-        return pc
-    else:
-        return pc + 4
+    offset = str(offset) + '00'
+    if rd < 0:
+        pc = pc + int(offset, 2)
+    return pc
 
-def BGEZ(rs, offset, pc):
+def BGEZ(rd, offset, pc):
     """ BGEZ """
-    target = sign_extend(target << 2, 18)
-
-    if sign_extend(rs,64) >= 0:
-        pc = pc + target
-        return pc
-    else:
-        return pc + 4
+    offset = str(offset) + '00'
+    if rd >= 0:
+        pc = pc + int(offset, 2)
+    return pc + 4
 
 def BGEZAL(rs, target, pc):
     """ BGEZAL """
     target = sign_extend(target << 2, 18)
     #pc = pc + 8
-    pc = pc + 8
+    pc = pc + 4
 
     if rs >= 0:
         pc = pc + target
-              
-    return pc    
+ 
+    return pc  
 
 def J(target, pc):
     """ J """
-    
-    pc = (pc & 0xf0000000) | (target * 4)
+    pc = 0x80000000 + target * 4
     return pc
 
 def JAL(target, pc):
@@ -413,7 +401,7 @@ def JAL(target, pc):
  
     #pc = 0x80245000 | (target << 2) & 0xFFFF
  
-    pc = (pc & 0xf0000000) | (target * 4)
+    pc = 0x80000000 + (target << 2) 
    
     return int(pc) 
 
@@ -427,15 +415,14 @@ def BEQ(rs, rt, target, pc):
         pc = pc + target
         return pc
     else:
-        return pc + 4 
+        return pc + 4
 
 def BEQL(rs, rt, target, pc):
     """ BEQL """
-    target = sign_extend(target << 2, 18)
-    if (rs & 0xFFFF_FFFF_FFFF_FFFF) == (rt & 0xFFFF_FFFF_FFFF_FFFF):
+    if sign_extend(rs,64) != sign_extend(rt,64):
         
         pc = pc + target
-        return pc 
+        return pc + 4
     else:
         return pc + 8
 
@@ -447,15 +434,16 @@ def BNE(rs, rt, target, pc):
     
 #    if ((rs >> 32) & 0xFFFF_FFFF) != ((rt >> 32) & 0xFFFF_FFFF) | (rs & 0xFFFF_FFFF) != (rt & 0xFFFF_FFFF):
     #if (rs & 0xFFFF_FFFF) == (rt & 0xFFFF_FFFF) or (rs == rt):
-    if (rs& 0xFFFF_FFFF_FFFF_FFFF) != (rt & 0xFFFF_FFFF_FFFF_FFFF):
+    if (rs & 0xFFFF_FFFF_FFFF_FFFF) != (rt & 0xFFFF_FFFF_FFFF_FFFF):
         pc = pc + target
         return pc 
+        
         
         
        
         
         
-    else:
+    else: 
         return pc + 4
         
         
@@ -463,19 +451,19 @@ def BNE(rs, rt, target, pc):
 def BNEL(rs, rt, target, pc):
     """ BNEL """
  
-    if (rs & 0xFFFF_FFFF_FFFF_FFFF) != (rt & 0xFFFF_FFFF_FFFF_FFFF):
+    if rs != rt:
         
         pc = pc + target
         return pc
     else:
-        return pc + 8 
+        return pc + 4 
     
 def BLEZ(rs, rt, target, pc):
     """ BLEZ """
 
     target = sign_extend(target << 2, 18)
     
-    if (rs & 0xFFFF_FFFF_FFFF_FFFF) <= 0:
+    if sign_extend(rs,64) <= 0:
         pc = pc + target
         return pc 
         
@@ -486,9 +474,7 @@ def BLEZ(rs, rt, target, pc):
 
 def BGTZ(rs, target, pc):
     """ BGTZ """
-    target = sign_extend(target << 2, 18)
-
-    if (rs & 0xFFFF_FFFF_FFFF_FFFF)  > 0:
+    if sign_extend(rs,64) > 0:
         pc = pc + target
         return pc
     else:
@@ -497,10 +483,7 @@ def BGTZ(rs, target, pc):
 
 def ADDI(rt, rs, imm):
     """ ADDI """    
-
-    rt = (rs & 0xFFFF_FFFF) + (sign_extend(imm & 0xFFFF,16))
-
-    return sign_extend(rt ,32)
+    return rs + imm
 
 
 def ADDIU(rt, rs, imm):
@@ -508,14 +491,14 @@ def ADDIU(rt, rs, imm):
     #print(f'{rs} + {imm}')
     #print(f'{rs + sign_extend(imm, 16)}')
 
-    rt = (rs & 0xFFFF_FFFF) + (sign_extend(imm & 0xFFFF,16))
-    return sign_extend(rt,32)
+       
+    return sign_extend((rs & 0xFFFF_FFFF) + sign_extend(imm,16),32)
 
 
 def SLTI(rt, rs, imm):
     """ SLTI """
     
-    if sign_extend(rs,64) < sign_extend(imm,16):
+    if rs < imm:
         rt = 1
     else:
         rt = 0
@@ -525,7 +508,7 @@ def SLTI(rt, rs, imm):
 def SLTIU(rt, rs, imm):
     """ SLTIU """
     
-    if (rs & 0xFFFF_FFFF_FFFF_FFFF) < (sign_extend(imm,16) & 0xFFFF_FFFF_FFFF_FFFF):
+    if signToUnsign(rs,64) < sign_extend(imm,64):
         rt = 1
     else:
         rt = 0
@@ -535,7 +518,7 @@ def SLTIU(rt, rs, imm):
 def ANDI(rt, rs, imm):
     """ ANDI """
     
-    rt = rs & (imm & 0xFFFF)
+    rt = (imm & rs) & 0xFFFF_FFFF
 
     return rt
 
@@ -544,26 +527,26 @@ def ANDI(rt, rs, imm):
 def ORI(rt, rs, imm):
     """ ORI """
     
-    rt = (rs) | (imm)
+    rt = rs | imm
     
     return rt
 
 def XORI(rt, rs, imm):
     """ XORI """
     
-    rt = (rs) ^ (imm & 0xFFFF) 
+    rt = rs ^ imm
     
     return rt
 
 def LUI(rt, imm):
     """ LUI """
     #print(imm << 16)
-    return sign_extend((imm << 16),32)
+    return sign_extend(imm << 16,32)
 
 def DADDI(rt, rs, imm):
     """ DADDI """
-    rt = sign_extend(rs,64) + imm
-    return rt & 0xFFFF_FFFF_FFFF_FFFF
+    rt = rs + imm
+    return rt
 
 def DADDIU(rt, rs, imm):
     """ DADDIU """
@@ -698,5 +681,6 @@ def MTC0(rt, rd):
 
 
     
+
 
 

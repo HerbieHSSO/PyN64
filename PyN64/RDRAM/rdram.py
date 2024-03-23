@@ -2,29 +2,35 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class Registers:
     def __init__(self):
-
         self._registers = {
-            "ri_mode_reg": 0,
-            "ri_config_reg": 0,
-            "ri_current_load_reg": 0,
-            "ri_select_reg": 0,
-            "ri_refresh/count_reg": 0,
-            "ri_latency_reg": 0,
-            "ri_rerror_reg": 0,
-            "ri_werror_reg": 0,
+            "RDRAM_CONFIG_REG": 0,
+            "RDRAM_DEVICE_ID_REG" : 0,
+            "RDRAM_DELAY_REG": 0,
+            "RDRAM_MODE_REG": 0,
+            "RDRAM_REF_INTERVAL_REG": 0,
+            "RDRAM_REF_ROW_REG": 0,
+            "RDRAM_RAS_INTERVAL_REG": 0,
+            "RDRAM_MIN_INTERVAL_REG": 0,
+            "RDRAM_ADDR_SELECT_REG": 0,
+            "RDRAM_DEVICE_MANUF_REG": 0,
         }
-
-
-
-
-
-
-
-
     def set(self, register_name, value, offset):
-     
 
         byte1 = (self._registers[register_name] >> 24) & 0xFF
         byte2 = (self._registers[register_name] >> 16) & 0xFF
@@ -40,7 +46,6 @@ class Registers:
             self._registers[register_name] =  (byte1 << 24) | (byte2 << 16) | (byte3 << 8) | value
 
     def get(self, register_name):
-   
         return self._registers[register_name]
 
 
@@ -49,21 +54,6 @@ class Registers:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+class RDRAM:
+    def __init__(self):
+        self.registers = Registers()

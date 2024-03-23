@@ -49,11 +49,11 @@ class ROM:
         value = self._data[address]
         
         return value
- 
+
     def write(self, address, value):
-        data = self._data
-        data[address] = value
-        return data[address]
+        
+        self._data[address] = value
+        return self._data[address]
 
 
 

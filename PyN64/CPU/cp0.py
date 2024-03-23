@@ -18,15 +18,15 @@ class CP0_Registers:
         self._registers = {
             "index" : 0,
             "random": 0,
-            "entryLo0": 0,
-            "entryLo1": 0,
+            "entrylo0": 0,
+            "entrylo1": 0,
             "context": 0,
-            "pageMask": 0,
+            "pagemask": 0,
             "wired": 0,
-            "hwrEna": 0,
-            "badvAddr": 0,
+            "hwrena": 0,
+            "badvaddr": 0,
             "count": 0,
-            "entryHi": 0,
+            "entryhi": 0,
             "compare": 0,
             "status": 0,
             "cause": 0,
@@ -34,15 +34,15 @@ class CP0_Registers:
             "prid": 0,
             "config": 0,
             "lladdr": 0,
-            "watchLo": 0,
-            "watchHi": 0,
+            "watchlo": 0,
+            "watchhi": 0,
             "?20?": 0,
             "?21?": 0,
             "?22?": 0,
             "debug": 0,
             "depc": 0,
-            "perfctl": 0,
-            "ecc": 0,
+            "perfcnt": 0,
+            "errctl": 0,
             "cacheerr": 0,
             "taglo": 0,
             "taghi": 0,
@@ -53,7 +53,11 @@ class CP0_Registers:
 
     def set(self, register_name, value):
         self._registers[register_name] = value
+
+
+        
     def get(self, register_name):
+        #if self._registers['index'] == 
         return self._registers[register_name]
 
 
