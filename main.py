@@ -112,7 +112,7 @@ def main(q):
     args = sys.argv
     if len(args) < 2:
         print("No n64 rom file provided.")
-        #filename_arg = f"system-tests/CPULW.N64"
+        filename_arg = f"system-tests/DMAAlignment-PI-ROM-FROM_large_6.N64"
     elif len(args) == 2:
         filename_arg = args[1]
 
@@ -242,15 +242,15 @@ def main(q):
 
             if cpu.get_op() == 1000000:
                 None
-            if cpu.get_op() % 0x17D6C2 == 0:
-                if cpu.memory.VI.currentHalflines < cpu.memory.VI.numHalflines:
-                    cpu.memory.VI.registers._registers['vi_v_current_reg'] = (cpu.memory.VI.currentHalflines << 1)
-                    cpu.memory.VI.currentHalflines  += 1
-                    #image_queue.put(None)
-             
-                    cpu.memory.VI.render(cpu.memory)
-                    image_queue.put(cpu.memory.VI.render(cpu.memory))
-                    cpu.memory.VI.currentHalflines = 0
+            if cpu.get_op() % 0x174B*262 == 0:
+                #if cpu.memory.VI.currentHalflines < cpu.memory.VI.numHalflines:
+                cpu.memory.VI.registers._registers['vi_v_current_reg'] = (cpu.memory.VI.currentHalflines << 1)
+                cpu.memory.VI.currentHalflines  += 1
+                #image_queue.put(None)
+            
+                cpu.memory.VI.render(cpu.memory)
+                image_queue.put(cpu.memory.VI.render(cpu.memory))
+                cpu.memory.VI.currentHalflines = 0
                 
                 if (cpu.memory.VI.registers._registers['vi_v_current_reg'] & 0x3FE) >= cpu.memory.VI.registers._registers['vi_v_intr']:
                         cpu.memory.mi.set_bit('MI_INTR_REG', 3)
