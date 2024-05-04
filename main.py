@@ -8,6 +8,7 @@
 
 from PyN64.CPU import cpu
 from PyN64.CPU.cpu import CPU
+from PyN64.CPU.cp0 import *
 from PyN64.CPU.cpu import Registers
 from PyN64.CPU.cpu import Memory
 from PyN64.rom import ROM
@@ -21,12 +22,14 @@ from PyN64.CPU.instruction_decoding import FetchAndDecode
 from PyN64.RSP.decode import FetchAndDecodeRSP
 
 
-import sys
+import sys, os
 import keyboard
 import time
+from PIL import Image, ImageTk
+import tkinter as tk
+
 import multiprocessing as mp
-from multiprocessing import Process, Queue
-from datetime import timedelta
+
 import traceback
 
 
@@ -52,8 +55,8 @@ def BOOT(cpu, rom):
   
 
 
-    
     cpu.set_pc(0xA4000040)
+    #cpu.set_pc(0xA4000040)
     cpu.registers.set('at', 1)
     cpu.registers.set('v0', 247309622)
     cpu.registers.set('v1', 247309622)
@@ -70,9 +73,8 @@ def BOOT(cpu, rom):
     cpu.registers.set('t7', 822337825)
 
     cpu.registers.set('s4', 1)
-    cpu.registers.set('s7', 6)
     cpu.registers.set('s6', 63)
-    cpu.registers.set('t8', 0)
+    cpu.registers.set('t8', 3)
     cpu.registers.set('t9', -1645497009)
     cpu.registers.set('sp', -1543495696)
     
@@ -106,10 +108,11 @@ def debug(q):
         print(q.get())        
 
 def main(q):
-   
+
     args = sys.argv
     if len(args) < 2:
-        filename_arg = f"Super Mario 64 (USA).z64"
+        print("No n64 rom file provided.")
+        #filename_arg = f"system-tests/CPULW.N64"
     elif len(args) == 2:
         filename_arg = args[1]
 
@@ -127,22 +130,34 @@ def main(q):
     rsp = RSP()
     rdram = RDRAM()
     #rdp = RDP()
-    memory = Memory(rom, rsp, rdp, rdram)
+
+    coprocessor0 = CP0(CP0_Registers())
+    memory = Memory(rom, rsp, rdp, rdram, coprocessor0)
+
+
+
+
     registers = Registers()
-    cpu = CPU(registers, memory,  0)
+    cpu = CPU(registers, memory,  0, coprocessor0)
     
     
     BOOT(cpu, rom)
 
+    image_queue = mp.Queue()
 
-    
+    display_process = mp.Process(target=display_image, args=(image_queue,))
+    display_process.start()
     #rdp.set_title(f'{rom.getImageName()} -  {rom.getCountry()} Version')
 
-
-
     
+    file_path = "saved_image.png"
+
+
+
     return_pc = 0
     i = 0
+
+    
     start = time.time()
     while True:
 
@@ -159,10 +174,14 @@ def main(q):
       
             # MI ok; 
 
+
+
             fetch = cpu.fetch() 
 
+
+
             #print('pc: ', hex(cpu.get_pc()))     0xA4000AF0 0xA4000ACC 0x80322958 A4000040
-            if hex(cpu.get_pc()) == hex(0x80327E2C):
+            if hex(cpu.get_pc()) == hex(0x800013D4):
                 print(hex(cpu.get_pc()))
                 None
 
@@ -223,7 +242,25 @@ def main(q):
 
             if cpu.get_op() == 1000000:
                 None
+            if cpu.get_op() % 0x17D6C2 == 0:
+                if cpu.memory.VI.currentHalflines < cpu.memory.VI.numHalflines:
+                    cpu.memory.VI.registers._registers['vi_v_current_reg'] = (cpu.memory.VI.currentHalflines << 1)
+                    cpu.memory.VI.currentHalflines  += 1
+                    #image_queue.put(None)
+             
+                    cpu.memory.VI.render(cpu.memory)
+                    image_queue.put(cpu.memory.VI.render(cpu.memory))
+                    cpu.memory.VI.currentHalflines = 0
+                
+                if (cpu.memory.VI.registers._registers['vi_v_current_reg'] & 0x3FE) >= cpu.memory.VI.registers._registers['vi_v_intr']:
+                        cpu.memory.mi.set_bit('MI_INTR_REG', 3)
 
+                
+            """
+            if cpu.get_pc() == 0x80008DA0:
+                input()
+                cpu.memory.VI.render(cpu.memory)
+            """
             #print(f'op: {cpu.get_op()}, ', end="")EZ
             #print(f'time: {time.time() - start_time}') 8031e290:
 
@@ -231,6 +268,7 @@ def main(q):
             #print(f'pc: {hex(cpu.get_pc())}, instruction: {fetch}, op: {i}, time: {time.time() - start_time}')
             #803237bc
                #rdp.draw()
+            i += 1
         except Exception as e:
             print(f'An Error Occurred: {e}, pc: {hex(cpu.get_pc())} asm: {fetch} op: {cpu.get_op()}, {traceback.format_exc()}')
             break
@@ -240,11 +278,37 @@ def main(q):
     #quit()
 
 
+def display_image(image_queue):
+    root = tk.Tk()
+    root.title("PyN64")
+    root.geometry("640x480")
+    root.resizable(False, False)
+
+    image_label = tk.Label(root)
+    image_label.pack()
+    
+
+    def update_image():
+        if image_queue.get() != None:
+            image = image_queue.get()
+            photo = ImageTk.PhotoImage(image)
+            image_label.configure(image=photo)
+            image_label.image = photo  
+       
+        root.update_idletasks()  
+        root.after(100, update_image)  
+    
+    update_image()
+    root.mainloop()
 
 
 
 
 if __name__ == "__main__":
+
+
+
+
 
     main("q")
     """
@@ -255,9 +319,10 @@ if __name__ == "__main__":
     worker.start()
     debugger.start()
     
+    
+    worker.join()
+    debugger.join()
     """
-
-
 
 
 

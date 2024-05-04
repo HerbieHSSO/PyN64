@@ -3,7 +3,7 @@ from PyN64 import RDP
 
 from PyN64.RDRAM import ri, rdram
 from PyN64.IO import si, mi, pi
-from PyN64.RDP import vi
+from PyN64.RDP.vi import VideoInterface
 from PyN64.CPU.instruction_decoding import FetchAndDecode
 from PyN64.CPU.cp0 import *
 from PyN64.CPU.cp1 import *
@@ -40,7 +40,7 @@ def padhexa(s):
 
  
 class Memory:
-    def __init__(self, rom: ROM, rsp, rdp: RDP, rdram):
+    def __init__(self, rom: ROM, rsp, rdp: RDP, rdram, cp0):
         self.rom = rom
         self.rsp = rsp
         self.rdp = rdp
@@ -58,7 +58,7 @@ class Memory:
         self.IMEM = {}
 
   
-        self.VI = vi.Registers()
+        self.VI = VideoInterface()
         self.si = si.Registers()
         self.mi = mi.Registers(self)
         self.DPC = {}
@@ -66,7 +66,7 @@ class Memory:
         self.PI = pi.Registers(self)
         self.DD = {}
    
-
+        self.cp0 = cp0
     
     def read(self, address):
         address = address & 0xFFFF_FFFF
@@ -151,33 +151,35 @@ class Memory:
             print('video')
                 
             if 0xa4400000 <= address <= 0xa4400003:
-                return self.VI.get('vi_status/control_reg', address - 0xa4400000)
+                return self.VI.registers.get('vi_ctrl', address - 0xa4400000)
             if 0xa4400004 <= address <= 0xa4400007:
-                return self.VI.get('vi_origin/draw_addr_reg', address - 0xa4400004)
+                return self.VI.registers.get('vi_origin/draw_addr_reg', address - 0xa4400004)
             if 0xa4400008 <= address <= 0xa440000B:
-                return self.VI.get('vi_width/h_width_reg', address - 0xa4400008)
+                return self.VI.registers.get('vi_width/h_width_reg', address - 0xa4400008)
             if 0xa440000C <= address <= 0xa440000F:
-                return self.VI.get('vi_intr/v_width_reg', address - 0xa440000C)            
+                return self.VI.registers.get('vi_v_intr', address - 0xa440000C)            
             if 0xa4400010 <= address <= 0xa4400013:
-                return self.VI.get('vi_current/current_line_reg', address - 0xa4400010)
+                
+                return self.VI.registers.get('vi_v_current_reg', address - 0xa4400010)
+
             if 0xa4400014 <= address <= 0xa4400017:
-                return self.VI.get('vi_burst/timing_reg', address - 0xa4400014)
+                return self.VI.registers.get('vi_burst/timing_reg', address - 0xa4400014)
             if 0xa4400018 <= address <= 0xa440001B:
-                return self.VI.get('vi_v_sync_reg', address - 0xa4400018)
+                return self.VI.registers.get('vi_v_sync_reg', address - 0xa4400018)
             if 0xa440001C <= address <= 0xa440001F:
-                return self.VI.get('vi_h_sync_reg', address - 0xa440001C)            
+                return self.VI.registers.get('vi_h_sync_reg', address - 0xa440001C)            
             if 0xa4400020 <= address <= 0xa4400023:
-                return self.VI.get('vi_leap/h_sync_leap_reg', address - 0xa4400020)  
+                return self.VI.registers.get('vi_leap/h_sync_leap_reg', address - 0xa4400020)  
             if 0xa4400024 <= address <= 0xa4400027:
-                return self.VI.get('vi_h_start/h_video_reg', address - 0xa4400024)  
+                return self.VI.registers.get('vi_h_start/h_video_reg', address - 0xa4400024)  
             if 0xa4400028 <= address <= 0xa440002B:
-                return self.VI.get('vi_v_start/v_video_reg', address - 0xa4400028)  
+                return self.VI.registers.get('vi_v_start/v_video_reg', address - 0xa4400028)  
             if 0xa440002C <= address <= 0xa440002F:
-                return self.VI.get('vi_v_burst_reg', address - 0xa440002C) 
+                return self.VI.registers.get('vi_v_burst_reg', address - 0xa440002C) 
             if 0xa4400030 <= address <= 0xa4400033:
-                return self.VI.get('vi_x_scale_reg', address - 0xa4400030) 
+                return self.VI.registers.get('vi_x_scale_reg', address - 0xa4400030) 
             if 0xa4400034 <= address <= 0xa4400037:
-                return self.VI.get('vi_y_scale_reg', address - 0xa4400034) 
+                return self.VI.registers.get('vi_y_scale_reg', address - 0xa4400034) 
 
 
         elif 0xA4500000 <= address <= 0xA45FFFFF:
@@ -236,7 +238,7 @@ class Memory:
       
        
 
-        elif 0x80000000 <= address <= 0x80800000:
+        elif 0x80000000 <= address <= 0x803FFFFF:
             #RDRAM Cached
             try:
                 return int(self.RDRAM[f'{address - 0x80000000}'])
@@ -269,6 +271,8 @@ class Memory:
             raise ValueError(f'ERROR: Read from {hex(address)}')
     
     def write(self, address, value):
+
+        # I need to implement write 32bit, 16bit, instead loads each byte once each
         address = address & 0xFFFF_FFFF
 
         if address == 0x8033A858:
@@ -361,33 +365,51 @@ class Memory:
         elif 0xA4400000 <= address <= 0xA44FFFFF:
             # Video Interface
             if 0xa4400000 <= address <= 0xa4400003:
-                self.VI.set('vi_status/control_reg', value, address - 0xa4400000)
+                self.VI.registers.set('vi_ctrl', value, address - 0xa4400000)
             elif 0xa4400004 <= address <= 0xa4400007:
-                self.VI.set('vi_origin/draw_addr_reg', value, address - 0xa4400004)
+                self.VI.registers.set('vi_origin/draw_addr_reg', value, address - 0xa4400004)
             elif 0xa4400008 <= address <= 0xa440000B:
-                self.VI.set('vi_width/h_width_reg', value, address - 0xa4400008)
+                self.VI.registers.set('vi_width/h_width_reg', value, address - 0xa4400008)
             elif 0xa440000C <= address <= 0xa440000F:
-                self.VI.set('vi_intr/v_width_reg', value, address - 0xa440000C)            
+                self.VI.registers.set('vi_v_intr', value, address - 0xa440000C)   
+                if self.VI.registers._registers['vi_v_current_reg'] & 0x3FF == self.VI.registers._registers['vi_v_intr']:
+                    self.mi.clear_bit('MI_INTR_REG', 3)
+                    self.cp0.registers.clear_bit('cause', 10)
             elif 0xa4400010 <= address <= 0xa4400013:
-                self.VI.set('vi_current/current_line_reg', value, address - 0xa4400010)
+                self.VI.registers.set('vi_v_current_reg', value, address - 0xa4400010)
+                if self.VI.registers._registers['vi_v_current_reg'] & 0x3FF == self.VI.registers._registers['vi_v_intr']:
+                    self.mi.clear_bit('MI_INTR_REG', 3)
+                    self.cp0.registers.clear_bit('cause', 10)
+
+
             elif 0xa4400014 <= address <= 0xa4400017:
-                self.VI.set('vi_burst/timing_reg', value, address - 0xa4400014)
+                self.VI.registers.set('vi_burst/timing_reg', value, address - 0xa4400014)
             elif 0xa4400018 <= address <= 0xa440001B:
-                self.VI.set('vi_v_sync_reg', value, address - 0xa4400018)
+                self.VI.registers.set('vi_v_sync_reg', value, address - 0xa4400018)
+                self.VI.numHalflines = self.VI.registers._registers['vi_v_sync_reg'] >> 1
+                
+
+
+
             elif 0xa440001C <= address <= 0xa440001F:
-                self.VI.set('vi_h_sync_reg', value, address - 0xa440001C)            
+                self.VI.registers.set('vi_h_sync_reg', value, address - 0xa440001C)            
             elif 0xa4400020 <= address <= 0xa4400023:
-                self.VI.set('vi_leap/h_sync_leap_reg', value, address - 0xa4400020)  
+                self.VI.registers.set('vi_leap/h_sync_leap_reg', value, address - 0xa4400020)  
             elif 0xa4400024 <= address <= 0xa4400027:
-                self.VI.set('vi_h_start/h_video_reg', value, address - 0xa4400024)  
+                self.VI.registers.set('vi_h_start/h_video_reg', value, address - 0xa4400024)  
+                #self.VI.draw = True
+               
+                
+
+
             elif 0xa4400028 <= address <= 0xa440002B:
-                self.VI.set('vi_v_start/v_video_reg', value, address - 0xa4400028)  
+                self.VI.registers.set('vi_v_start/v_video_reg', value, address - 0xa4400028)  
             elif 0xa440002C <= address <= 0xa440002F:
-                self.VI.set('vi_v_burst_reg', value, address - 0xa440002C) 
+                self.VI.registers.set('vi_v_burst_reg', value, address - 0xa440002C) 
             elif 0xa4400030 <= address <= 0xa4400033:
-                self.VI.set('vi_x_scale_reg', value, address - 0xa4400030) 
+                self.VI.registers.set('vi_x_scale_reg', value, address - 0xa4400030) 
             elif 0xa4400034 <= address <= 0xa4400037:
-                self.VI.set('vi_y_scale_reg', value, address - 0xa4400034) 
+                self.VI.registers.set('vi_y_scale_reg', value, address - 0xa4400034) 
             else:
                 return 0
 
@@ -489,15 +511,14 @@ class Memory:
 
 
 
-
-
-        elif 0x80000000  <= address <= 0x80800000:
+        elif 0x80000000  <= address <= 0x803FFFFF:
             #RDRAM Cached
+          
             self.RDRAM.update({f'{address - 0x80000000}': f'{value}'})
             #self.rom.write(address - 0x80000000, value)
         elif 0xA0000000  <= address <= 0xA0800000:
             #RDRAM Uncached
-            self.RDRAM.update({f'{address - 2684354560}': f'{value}'})
+            self.RDRAM.update({f'{address - 0xA0000000}': f'{value}'})
         elif 0xB0000000 <= address <= 0xBFCFFFFF:            
 
             None
@@ -595,12 +616,12 @@ class Registers:
 
 class CPU:
 
-    def __init__(self, registers, memory, program_counter: int):
+    def __init__(self, registers, memory, program_counter: int, cop0):
         self.registers = registers
         self.memory = memory
         self.program_counter = program_counter
         
-        self.cp0 = CP0(CP0_Registers())
+        self.cp0 = cop0
         self.cp1 = CP1(CP1_Registers())
         self.op = 0
     
@@ -728,8 +749,7 @@ class CPU:
         
         value = self.memory.read(address)
         print(value)
-        if address == 0xB0000010:
-            None
+
         #print(f'value: {value}')
         return sign_extend(value & 0xFF,8)
 

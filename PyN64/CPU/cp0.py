@@ -63,7 +63,14 @@ class CP0_Registers:
 
 
 
+    def get_bit(self, register_name, bit):
+        return (self._registers[register_name] & (1 << bit)) >> bit
 
+    def set_bit(self, register_name, bit):
+        self._registers[register_name] = self._registers[register_name] | (1<<bit)
+
+    def clear_bit(self, register_name, bit):
+        self._registers[register_name] = self._registers[register_name] & ~(1<<bit)
 
 
 

@@ -29,14 +29,14 @@ def LoSigned(n):
 def SLL(rd, rt, sa):
     """ SLL """
     
-    rd = sign_extend(rt << sa,32)
+    rd = sign_extend((rt & 0xFFFF_FFFF) << sa,32)
 
     return rd
 
 def SRL(rd, rt, sa):
     """ SRL """
     
-    rd = sign_extend(rt >> sa, 32) 
+    rd = sign_extend((rt & 0xFFFF_FFFF) >> sa, 32) 
     
     return rd
 
@@ -626,12 +626,14 @@ def LHU(rt, base, target):
 
 def LWR(rt, base, target):
     """ LWR """
-    rt = base + target
+
+    rt = (base & 0xFFFF_FFFF) + sign_extend(target,16)
+    
     return rt
 
 def LWU(rt, base, target):
     """ LWU """
-    rt = base + target
+    rt = base + sign_extend(target,16)
     return rt
 
 def SB(rt, base, target):

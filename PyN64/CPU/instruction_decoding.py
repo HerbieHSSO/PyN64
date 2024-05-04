@@ -492,7 +492,7 @@ def FetchAndDecode(cpu, instruction):
         target = sign_extend(target << 2, 18)
         
 
-        if (rs & 0xFFFF_FFFF_FFFF_FFFF) != (rt & 0xFFFF_FFFF_FFFF_FFFF):
+        if (rs) != (rt):
             return (FetchAndDecode(cpu, cpu.execute_next_instruction(cpu, pc)), cpu.set_pc(pc + target))
             
         else:
@@ -504,7 +504,7 @@ def FetchAndDecode(cpu, instruction):
         #print(f'blez {rs} {rt} {hex(pc + sign_extend(imm << 2,18) + 4)}')
         target = sign_extend(target << 2, 18)
         
-        if (rs & 0xFFFF_FFFF_FFFF_FFFF) <= 0:
+        if (rs) <= 0:
             return (FetchAndDecode(cpu, cpu.execute_next_instruction(cpu, pc)), cpu.set_pc(pc + target))
         else:
             return cpu.set_pc(pc)
@@ -515,7 +515,7 @@ def FetchAndDecode(cpu, instruction):
             rt = cpu.registers.get(rt)
             target = sign_extend(target << 2, 18)
 
-            if (rs & 0xFFFF_FFFF_FFFF_FFFF) >= 0:
+            if (rs) > 0:
                 return (FetchAndDecode(cpu, cpu.execute_next_instruction(cpu, pc)), cpu.set_pc(pc + target))
             else:
                 return cpu.set_pc(pc)
@@ -615,7 +615,28 @@ def FetchAndDecode(cpu, instruction):
         return cpu.registers.set(rt, cpu.load_s16(LH(cpu.registers.get(rt), cpu.registers.get(rs), imm)))
     if opcode == 0x22:
         print(f'lwl {rt} {rs} {imm}')
-        return cpu.registers.set(rt, cpu.load(LWL(cpu.registers.get(rt), cpu.registers.get(rs), imm)))
+
+        addr = (cpu.registers.get(rs) & 0xFFFF_FFFF) + sign_extend(imm, 16)
+        data = cpu.registers.get(rt) & 0xFFFF_FFFF
+        mem = cpu.load_u((addr & ~3))& 0xFFFF_FFFF
+
+        if (addr & 3) == 0:
+            data &= 0
+            mem <<= 0
+        elif (addr & 3) == 1:
+            data &= 0xFF
+            mem <<= 8
+        elif (addr & 3) == 2:
+            data &= 0xFFFF
+            mem <<= 16
+        elif (addr & 3) == 3:
+            data &= 0xFFFF_FF
+            mem <<= 24
+ 
+        data |= mem
+        cpu.registers.set(rt, sign_extend(data,32))        
+
+
     if opcode == 0x23:
         #print(f'lw {rt} {rs} {imm}')
 
@@ -629,7 +650,34 @@ def FetchAndDecode(cpu, instruction):
         return cpu.registers.set(rt, (cpu.load_u16(LHU(cpu.registers.get(rt), cpu.registers.get(rs), imm))))
     if opcode == 0x26:
         print(f'lwr {rt} {rs} {imm}')
-        return cpu.registers.set(rt, cpu.load(LWR(cpu.registers.get(rt), cpu.registers.get(rs), target)))
+        #return cpu.registers.set(rt, cpu.load(LWR(cpu.registers.get(rt), cpu.registers.get(rs), target)))
+        addr = (cpu.registers.get(rs) & 0xFFFF_FFFF) + sign_extend(imm, 16)
+        data = cpu.registers.get(rt) & 0xFFFF_FFFF
+        mem = cpu.load_u((addr & ~3))& 0xFFFF_FFFF
+
+        match (addr & 3):
+             case 0:
+                  data &= 0xFFFFFF00
+                  mem >>= 24
+                  data |= mem
+                  cpu.registers.set(rt, sign_extend(data,32))
+             case 1:
+                  data &= 0xFFFF0000
+                  mem >>= 16      
+                  data |= mem
+                  cpu.registers.set(rt, sign_extend(data,32))
+             case 2:
+                  data &= 0xFF000000
+                  mem >>= 8      
+                  data |= mem
+                  cpu.registers.set(rt, sign_extend(data,32))     
+             case 3:
+                  data &= 0x00
+                  mem >>= 0 
+                  data |= mem
+                  cpu.registers.set(rt, sign_extend(data,32))             
+
+        return 
     if opcode == 0x27:
         print(f'lwu {rt} {rs} {imm}')
         return cpu.registers.set(rt, cpu.load_u(LWU(cpu.registers.get(rt), cpu.registers.get(rs), target)))
@@ -677,13 +725,13 @@ def FetchAndDecode(cpu, instruction):
                 
             if get_bit(cpu.cp0.registers.get("status"), 2) == 1:
 
-                try:
+        
                   
                     cpu.set_pc(cpu.cp0.registers.get("errorepc") & 0xFFFF_FFFF)
                     cpu.cp0.registers.set("status", clear_bit(cpu.cp0.registers.get("status"),2))
-                except:
-                    cpu.cp0.registers.set("cause", 0x400)
-                    cpu.set_pc(0x80000180)
+            
+                    #cpu.cp0.registers.set("cause", 0x400)
+                    #cpu.set_pc(0x80000180)
                 
             else:
                 print(cpu.cp0.registers.get("epc"))

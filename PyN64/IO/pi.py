@@ -44,6 +44,7 @@ class Registers:
                 self._registers[register_name] =  (byte1 << 24) | (byte2 << 16) | (value << 8) | byte4
             if offset == 3:
                 self._registers[register_name] =  (byte1 << 24) | (byte2 << 16) | (byte3 << 8) | value
+            self._registers[register_name] = self._registers[register_name] & 0xFF_FFFE
         if register_name == "PI_CART_ADDR_REG":
             if offset == 0:
                 self._registers[register_name] =  (value << 24) | (byte2 << 16) | (byte3 << 8) | byte4
@@ -52,7 +53,8 @@ class Registers:
             if offset == 2:
                 self._registers[register_name] =  (byte1 << 24) | (byte2 << 16) | (value << 8) | byte4
             if offset == 3:
-                self._registers[register_name] =  (byte1 << 24) | (byte2 << 16) | (byte3 << 8) | value            
+                self._registers[register_name] =  (byte1 << 24) | (byte2 << 16) | (byte3 << 8) | value  
+            self._registers[register_name] = self._registers[register_name] & 0xFFFF_FFFE          
         if register_name == "PI_RD_LEN_REG":
             if offset == 1:
                 self._registers[register_name] =  (byte1 << 24) | (value << 16) | (byte3 << 8) | byte4
@@ -63,7 +65,7 @@ class Registers:
                 if self._registers[register_name] > 127:
                     self._registers[register_name] = 127
                 for i in range(self._registers['PI_RD_LEN_REG'] * 8 - 1):
-                    self.memory.write(self._registers['PI_DRAM_ADDR_REG']+i, self._registers['PI_CART_ADDR_REG'] + i)
+                    self.memory.write((self._registers['PI_CART_ADDR_REG']+i) + 0xB0000000, self._registers['PI_CART_ADDR_REG'] + i)
         if register_name == "PI_WR_LEN_REG":
             if offset == 1:
                 self._registers[register_name] =  (byte1 << 24) | (value << 16) | (byte3 << 8) | byte4
@@ -71,11 +73,26 @@ class Registers:
                 self._registers[register_name] =  (byte1 << 24) | (byte2 << 16) | (value << 8) | byte4
             if offset == 3:
                 self._registers[register_name] =  (byte1 << 24) | (byte2 << 16) | (byte3 << 8) | value
+
+                #self.set_bit("PI_STATUS_REG", 0)
+                if 0x10000000 <= self._registers['PI_CART_ADDR_REG'] <= 0xFFFFFFFF:
+                    
+                    for i in range(0, self._registers['PI_WR_LEN_REG'] + 1):
+                        try:
+                            self.memory.write((self._registers['PI_DRAM_ADDR_REG']+i)+ 0x80000000, self.memory.read(((self._registers['PI_CART_ADDR_REG'] & 0x7FFFFE) + i) + 0xB0000000))
+                        except:
+                            self.memory.write((self._registers['PI_DRAM_ADDR_REG']+i)+ 0x80000000, 0)
+
+
+
+                self.memory.write(0x80000318, 8 * 1024 * 1024)
+                self._registers["PI_DRAM_ADDR_REG"] = self._registers["PI_DRAM_ADDR_REG"] + (self._registers['PI_WR_LEN_REG'] + 1) + 7 & ~7
+                self._registers["PI_CART_ADDR_REG"] = self._registers["PI_CART_ADDR_REG"] + (self._registers['PI_WR_LEN_REG'] + 1) + 1 & ~1                            
                 if self._registers[register_name] > 127:
                     self._registers[register_name] = 127
-                for i in range(self._registers['PI_WR_LEN_REG'] * 8 - 1):
-                    self.memory.write(self._registers['PI_CART_ADDR_REG']+i, self._registers['PI_DRAM_ADDR_REG'] + i)
-            
+
+
+
         if register_name == "PI_STATUS_REG":
             if offset == 3:
                 if (value & 0b10) != 0:
