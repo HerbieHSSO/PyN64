@@ -27,6 +27,6 @@ python main.py [rom path]
 
 ![image](https://user-images.githubusercontent.com/54962184/170876652-eb3c5fb7-ce6d-4191-8a32-4d98476186ed.png)
 
-Running CPULW.N64 test from [PeterLemon-N64]([https://github.com/lemmy-64/n64-systemtest](https://github.com/PeterLemon/N64/))
+Running CPULW.N64 test from [PeterLemon-N64](https://github.com/lemmy-64/n64-systemtest)
 
 ![image](https://github.com/HerbieHSSO/PyN64/assets/54962184/0669077d-3c31-4a76-b909-920263ecf410)
