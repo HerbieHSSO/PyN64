@@ -25,7 +25,10 @@ python main.py [rom path]
 
 ## Images
 
-Running CPULW.N64 test from [PeterLemon-N64]([https://github.com/PeterLemon/N64/](https://github.com/PeterLemon/N64/tree/master/CPUTest/CPU/LOADSTORE/LW))
+Running CPULW.N64 test from [PeterLemon-N64](https://github.com/PeterLemon/N64/](https://github.com/PeterLemon/N64/tree/master/CPUTest/CPU/LOADSTORE/LW)
+
 ![image](https://github.com/HerbieHSSO/PyN64/assets/54962184/0669077d-3c31-4a76-b909-920263ecf410)
-Running HelloWorldCPU.N64 test from [PeterLemon-N64]([https://github.com/PeterLemon/N64/](https://github.com/PeterLemon/N64/tree/master/HelloWorld/32BPP))
+
+Running HelloWorldCPU.N64 test from [PeterLemon-N64](https://github.com/PeterLemon/N64/](https://github.com/PeterLemon/N64/tree/master/HelloWorld/32BPP)
+
 ![image](https://github.com/HerbieHSSO/PyN64/assets/54962184/a562fd13-2d0d-4940-bbcb-5555a04ec370)
